@@ -166,7 +166,12 @@ const removeStoreFromTrackedConnections = (
   }
 }
 
-const findCallerName = (stack: string | undefined) => {
+// V8 (Chrome/Edge/Node): "at <name> (<source>)"
+const v8StackLineRe = /.+ (.+) .+/
+// SpiderMonkey (Firefox) / JavaScriptCore (Safari): "<name>@<source>"
+const geckoStackLineRe = /^([^@]+)@/
+
+function findCallerName(stack: string | undefined) {
   if (!stack) return undefined
   const traceLines = stack.split('\n')
   const apiSetStateLineIndex = traceLines.findIndex((traceLine) =>
@@ -174,7 +179,10 @@ const findCallerName = (stack: string | undefined) => {
   )
   if (apiSetStateLineIndex < 0) return undefined
   const callerLine = traceLines[apiSetStateLineIndex + 1]?.trim() || ''
-  return /.+ (.+) .+/.exec(callerLine)?.[1]
+  return (
+    v8StackLineRe.exec(callerLine)?.[1] ||
+    geckoStackLineRe.exec(callerLine)?.[1]
+  )
 }
 
 const devtoolsImpl: DevtoolsImpl =
